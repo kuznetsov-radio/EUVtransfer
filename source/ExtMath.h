@@ -1,9 +1,9 @@
 #pragma once
 
-#ifdef LINUX
-#define finite isfinite
-#else
+#ifndef LINUX
 #define finite _finite
+#else
+#define finite isfinite
 #endif
 
 inline double sqr(double x)
