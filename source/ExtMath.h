@@ -32,3 +32,5 @@ class Spline
  ~Spline();
  void Interpolate(double x, double *y, double *y1);
 };
+
+int value_locate(double *a, int n, double x);

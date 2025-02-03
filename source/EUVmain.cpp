@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <math.h>
+#include <float.h>
 #include "ExtMath.h"
 #include "IDLinterface.h"
 #include "Messages.h"
@@ -102,7 +103,6 @@ int EUVtransfer(int *Lparms, double *Rparms, double *Parms,
    }
 
    flux[D2(fluxSize, 0, l)]+=fl;
-   flux[D2(fluxSize, 1, l)]+=fl;
   }
  }
 
@@ -110,7 +110,7 @@ int EUVtransfer(int *Lparms, double *Rparms, double *Parms,
  {
   for (int m=0; m<NT_rsp_local; m++) EUV_integrand[m]=rsp_local[D2(NT_rsp_local, m, l)]*DEM_tr[DEM_idx+m]*Te_rsp_local[m];
   double fl=IntTabulated(logTe_rsp_local, EUV_integrand, NT_rsp_local)*log(10.0)*TRfactor;
-  flux[D2(fluxSize, 1, l)]+=fl;
+  flux[D2(fluxSize, 1, l)]=fl;
  }
 
  for (int l=0; l<Nch*fluxSize; l++) flux[l]*=(dS_map/dS_rsp);
@@ -122,6 +122,122 @@ int EUVtransfer(int *Lparms, double *Rparms, double *Parms,
  free(logTe_rsp_local);
  free(Te_rsp_local);
  free(pix_on);
+
+ return 0;
+}
+
+int InterpolateEBTEL(int NQ, int NL, int NT, double Q, double L, double *QgridL, double *LgridL, float *DEM_run, double *DEM)
+{
+ for (int l=0; l<NT; l++) DEM[l]=0;
+
+ int res=0;
+
+ double Qlog=(finite(Q) && Q>0) ? log(Q) : -1000;
+ double Llog=(finite(L) && L>0) ? log(L) : -1000;
+
+ int Lind=value_locate(LgridL, NL, Llog);
+
+ if (Lind>=0 && Lind<(NL-1))
+ {
+  int Qind1=value_locate(QgridL+Lind*NQ, NQ, Qlog);
+  int Qind2=value_locate(QgridL+(Lind+1)*NQ, NQ, Qlog);
+
+  if (Qind1>=0 && Qind1<(NQ-1) && Qind2>=0 && Qind2<(NQ-1))
+  {
+   res=1;
+
+   double dL=(Llog-LgridL[Lind])/(LgridL[Lind+1]-LgridL[Lind]);
+   double dQ1=(Qlog-QgridL[D2(NQ, Qind1, Lind)])/(QgridL[D2(NQ, Qind1+1, Lind)]-QgridL[D2(NQ, Qind1, Lind)]);
+   double dQ2=(Qlog-QgridL[D2(NQ, Qind2, Lind+1)])/(QgridL[D2(NQ, Qind2+1, Lind+1)]-QgridL[D2(NQ, Qind2, Lind+1)]);
+
+   for (int l=0; l<NT; l++)
+    DEM[l]=DEM_run[D3(NT, NQ, l, Qind1, Lind)]*(1.0-dL)*(1.0-dQ1)+
+           DEM_run[D3(NT, NQ, l, Qind1+1, Lind)]*(1.0-dL)*dQ1+
+           DEM_run[D3(NT, NQ, l, Qind2, Lind+1)]*dL*(1.0-dQ2)+
+           DEM_run[D3(NT, NQ, l, Qind2+1, Lind+1)]*dL*dQ2;
+  }
+ }
+
+ return res;
+}
+
+int EUVtransferGX(int *Lparms, double *Rparms, double *Parms, 
+	              float *logTe_rsp, double *rsp, 
+				  float *Qrun, float *Lrun, float *logTe_DEM, float *DEM_cor_run, float *DEM_tr_run, 
+	              double *flux)
+{
+ int Nz=Lparms[0];
+ int Nchannels=Lparms[1];
+ int NT_rsp=Lparms[2];
+ int NQ=Lparms[3];
+ int NL=Lparms[4];
+ int NT_DEM=Lparms[5];
+
+ double dS_map=Rparms[0];
+ double dS_rsp=Rparms[1];
+
+ double *LgridL=(double*)malloc(sizeof(double)*NL);
+ for (int j=0; j<NL; j++) LgridL[j]=log((double)Lrun[D2(NQ, 0, j)]);
+
+ double *QgridL=(double*)malloc(sizeof(double)*NQ*NL);
+ for (int i=0; i<NQ*NL; i++) QgridL[i]=log((double)Qrun[i]);
+
+ int Lparms_short[4]={Nz, Nchannels, NT_rsp, NT_DEM}; 
+
+ double *logTe_rsp_short=(double*)malloc(sizeof(double)*NT_rsp);
+ for (int i=0; i<NT_rsp; i++) logTe_rsp_short[i]=logTe_rsp[i];
+
+ double *logTe_DEM_short=(double*)malloc(sizeof(double)*NT_DEM);
+ for (int i=0; i<NT_DEM; i++) logTe_DEM_short[i]=logTe_DEM[i];
+
+ double *Parms_short=(double*)malloc(sizeof(double)*Nz*ParmSize);
+ double *DEM_cor_short=(double*)malloc(sizeof(double)*Nz*NT_DEM);
+ double *DEM_tr_short=(double*)malloc(sizeof(double)*NT_DEM);
+
+ double TRfactor=0;
+ int TRlocation=-1;
+
+ for (int i=Nz-1; i>=0; i--)
+ {
+  Parms_short[D2(ParmSize, 0, i)]=Parms[D2(ParmSizeGX, 0, i)]; //dz
+  Parms_short[D2(ParmSize, 1, i)]=Parms[D2(ParmSizeGX, 1, i)]; //T0
+  Parms_short[D2(ParmSize, 2, i)]=Parms[D2(ParmSizeGX, 2, i)]; //n0
+
+  int ID=(int)Parms[D2(ParmSizeGX, 3, i)];
+  if ((ID & 1)!=0)
+  {
+   int DEM_valid=InterpolateEBTEL(NQ, NL, NT_DEM,
+	                              Parms[D2(ParmSizeGX, 4, i)], Parms[D2(ParmSizeGX, 5, i)], 
+	                              QgridL, LgridL, DEM_cor_run, 
+	                              DEM_cor_short+i*NT_DEM);
+   Parms_short[D2(ParmSize, 3, i)]=DEM_valid;
+  }
+  else Parms_short[D2(ParmSize, 3, i)]=0;
+
+  if ((ID & 2)!=0 && TRlocation<0)
+  {
+   int DEM_valid=InterpolateEBTEL(NQ, NL, NT_DEM,
+	                              Parms[D2(ParmSizeGX, 4, i)], Parms[D2(ParmSizeGX, 5, i)], 
+	                              QgridL, LgridL, DEM_tr_run, 
+	                              DEM_tr_short);
+   TRfactor=DEM_valid ? Parms[D2(ParmSizeGX, 6, i)] : 0;
+   TRlocation=i;
+  }
+ }
+
+ double Rparms_short[3]={dS_map, dS_rsp, TRfactor};
+
+ EUVtransfer(Lparms_short, Rparms_short, Parms_short, 
+	         logTe_rsp_short, rsp, 
+	         logTe_DEM_short, DEM_cor_short, DEM_tr_short, flux);
+
+ free(Parms_short);
+ free(DEM_cor_short);
+ free(DEM_tr_short);
+ free(logTe_DEM_short);
+ free(logTe_rsp_short);
+ free(QgridL);
+ free(LgridL);
 
  return 0;
 }

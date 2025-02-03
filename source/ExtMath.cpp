@@ -121,3 +121,21 @@ void Spline :: Interpolate(double x, double *y, double *y1)
  spline_interp(x_arr, y_arr, y2_arr, N, x, y, y1);
 }
 
+int value_locate(double *a, int n, double x)
+{
+ int asc=a[n-1]>a[0];
+
+ if (asc ? x<a[0] : x>a[0]) return -1;
+ if (asc ? x>=a[n-1] : x<=a[n-1]) return n-1;
+
+ int j, j1, l;
+ j=0; 
+ j1=n-1; 
+ while (j1-j>1) 
+ { 
+  l=(j+j1)>>1; 
+  if (asc ? a[l]>x : a[l]<x) j1=l; 
+  else j=l; 
+ } 
+ return j;
+} 

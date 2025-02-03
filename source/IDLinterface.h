@@ -1,7 +1,9 @@
 #pragma once
 
 #define RpSize 3
+#define RpSizeGX 2
 #define ParmSize 6
+#define ParmSizeGX 10
 #define fluxSize 2
 
 #define D2(s1, i1, i2) ((i1)+(i2)*(s1))
