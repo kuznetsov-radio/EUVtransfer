@@ -4,7 +4,6 @@
 #include <float.h>
 #include "ExtMath.h"
 #include "IDLinterface.h"
-#include "Messages.h"
 
 int EUVtransfer(int *Lparms, double *Rparms, double *Parms, 
 	            double *logTe_rsp, double *rsp, 
@@ -28,8 +27,9 @@ int EUVtransfer(int *Lparms, double *Rparms, double *Parms,
   
   if (DEM_on==0)
   {
+   double T0=Parms[D2(ParmSize, 1, k)];
    double n0=Parms[D2(ParmSize, 2, k)];
-   pix_on[k]=(n0>0);
+   pix_on[k]=(T0>0 && n0>0);
   }
   else
   {
@@ -182,8 +182,6 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
  double *QgridL=(double*)malloc(sizeof(double)*NQ*NL);
  for (int i=0; i<NQ*NL; i++) QgridL[i]=log((double)Qrun[i]);
 
- int Lparms_short[4]={Nz, Nchannels, NT_rsp, NT_DEM}; 
-
  double *logTe_rsp_short=(double*)malloc(sizeof(double)*NT_rsp);
  for (int i=0; i<NT_rsp; i++) logTe_rsp_short[i]=logTe_rsp[i];
 
@@ -195,16 +193,20 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
  double *DEM_tr_short=(double*)malloc(sizeof(double)*NT_DEM);
 
  double TRfactor=0;
- int TRlocation=-1;
+ int k_first=0;
+ int k_last=-1;
 
- for (int i=Nz-1; i>=0; i--)
+ int done=0;
+ for (int i=Nz-1; i>=0; i--) if (!done)
  {
+  k_first=i;
+
   Parms_short[D2(ParmSize, 0, i)]=Parms[D2(ParmSizeGX, 0, i)]; //dz
   Parms_short[D2(ParmSize, 1, i)]=Parms[D2(ParmSizeGX, 1, i)]; //T0
   Parms_short[D2(ParmSize, 2, i)]=Parms[D2(ParmSizeGX, 2, i)]; //n0
 
-  int ID=(int)Parms[D2(ParmSizeGX, 3, i)];
-  if ((ID & 1)!=0)
+  int VoxID=(int)Parms[D2(ParmSizeGX, 3, i)];
+  if ((VoxID & 4)!=0) //corona
   {
    int DEM_valid=InterpolateEBTEL(NQ, NL, NT_DEM,
 	                              Parms[D2(ParmSizeGX, 4, i)], Parms[D2(ParmSizeGX, 5, i)], 
@@ -214,22 +216,41 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
   }
   else Parms_short[D2(ParmSize, 3, i)]=0;
 
-  if ((ID & 2)!=0 && TRlocation<0)
+  if (k_last<0) if (Parms_short[D2(ParmSize, 3, i)]==0)
+  {
+   if (Parms_short[D2(ParmSize, 1, i)]>0 && Parms_short[D2(ParmSize, 2, i)]>0) k_last=i;
+  }
+  else
+  {
+   for (int l=0; l<NT_DEM; l++) if (DEM_cor_short[D2(NT_DEM, l, i)]>0)
+   {
+    k_last=i;
+    break;
+   }
+  }
+
+  if ((VoxID & 2)!=0) //TR
   {
    int DEM_valid=InterpolateEBTEL(NQ, NL, NT_DEM,
 	                              Parms[D2(ParmSizeGX, 4, i)], Parms[D2(ParmSizeGX, 5, i)], 
 	                              QgridL, LgridL, DEM_tr_run, 
 	                              DEM_tr_short);
    TRfactor=DEM_valid ? Parms[D2(ParmSizeGX, 6, i)] : 0;
-   TRlocation=i;
+   done=1;
   }
  }
 
  double Rparms_short[3]={dS_map, dS_rsp, TRfactor};
 
- EUVtransfer(Lparms_short, Rparms_short, Parms_short, 
-	         logTe_rsp_short, rsp, 
-	         logTe_DEM_short, DEM_cor_short, DEM_tr_short, flux);
+ if (k_last>=0)
+ {
+  int Lparms_short[4]={k_last-k_first+1, Nchannels, NT_rsp, NT_DEM}; 
+
+  EUVtransfer(Lparms_short, Rparms_short, Parms_short+k_first*ParmSize, 
+	          logTe_rsp_short, rsp, 
+	          logTe_DEM_short, DEM_cor_short+k_first*NT_DEM, DEM_tr_short, flux);
+ }
+ else memset(flux, 0, sizeof(double)*Nchannels*fluxSize);
 
  free(Parms_short);
  free(DEM_cor_short);
