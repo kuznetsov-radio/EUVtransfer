@@ -33,10 +33,10 @@ pro Example_EUV_GX_MultiThreads
  Parms[0, *]=1000d5 ;voxel length
  Parms[1, *]=T0 ;plasma temperature
  Parms[2, *]=n0 ;plasma density
- Parms[3, 5 : 8]=1 ;corona
- Parms[3, 9]=1+2   ;corona & TR
- Parms[4, 5 : 9]=0.0035 ;Q (some typical value)
- Parms[5, 5 : 9]=2.5d8  ;L (some typical value)
+ Parms[3, 0 : 4]=4 ;corona
+ Parms[3, 0]=4+2   ;corona & TR
+ Parms[4, 0 : 4]=0.0035 ;Q (some typical value)
+ Parms[5, 0 : 4]=2.5d8  ;L (some typical value)
  Parms[6, *]=TRfactor ;TRfactor is defined everywhere, but is used only in one voxel
  
  Parms_M=dblarr(10, Nz, Npix)
