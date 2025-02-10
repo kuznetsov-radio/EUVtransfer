@@ -34,7 +34,7 @@ pro Example_EUV_SingleThread
  DEM_cor_arr=dblarr(NT_DEM, Nz)
  for i=0, 4 do DEM_cor_arr[*, i]=DEM_cor ;DEM is defined in first 5 voxels
  
- flux=dblarr(2, Nchannels)
+ flux=dblarr(3, Nchannels)
  
  res=call_external('EUVtransfer_64.dll', 'GET_EUV', $
                    Lparms, Rparms, Parms, logTe_rsp, response, logTe_DEM, DEM_cor_arr, DEM_tr, flux)

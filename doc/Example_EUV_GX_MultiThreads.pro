@@ -46,7 +46,9 @@ pro Example_EUV_GX_MultiThreads
   Parms_M[5, *, i]=Parms[5, *]*10d0^(0.1*i)
  endfor
  
- flux_M=dblarr(2, Nchannels, Npix)
+ Parms_M[3, 0, 2 : 3]+=8 ;the EUVTR mask is set in last two LOSs (#2 and #3)
+ 
+ flux_M=dblarr(3, Nchannels, Npix)
  
  res=call_external('EUVtransfer_64.dll', 'GET_GX_EUV_SLICE', $
                    Lparms_M, Rparms_M, Parms_M, logTe_rsp, response, $

@@ -35,7 +35,7 @@ pro Example_EUV_GX_SingleThread
  Parms[5, 0 : 4]=2.5d8  ;L (some typical value)
  Parms[6, *]=TRfactor ;TRfactor is defined everywhere, but is used only in one voxel
  
- flux=dblarr(2, Nchannels)
+ flux=dblarr(3, Nchannels)
  
  res=call_external('EUVtransfer_64.dll', 'GET_GX_EUV', $
                    Lparms, Rparms, Parms, logTe_rsp, response, $
