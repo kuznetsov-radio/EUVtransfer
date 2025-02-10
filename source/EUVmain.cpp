@@ -113,7 +113,7 @@ int EUVtransfer(int *Lparms, double *Rparms, double *Parms,
   flux[D2(fluxSize, 1, l)]=fl;
  }
 
- for (int l=0; l<Nch*fluxSize; l++) flux[l]*=(dS_map/dS_rsp);
+ for (int m=0; m<2; m++) for (int l=0; l<Nch; l++) flux[D2(fluxSize, m, l)]*=(dS_map/dS_rsp);
 
  free(EUV_integrand);
  free(rsp_local);
@@ -195,6 +195,7 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
  double TRfactor=0;
  int k_first=0;
  int k_last=-1;
+ int EUVTR_on=0;
 
  int done=0;
  for (int i=Nz-1; i>=0; i--) if (!done)
@@ -237,6 +238,8 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
 	                              DEM_tr_short);
    TRfactor=DEM_valid ? Parms[D2(ParmSizeGX, 6, i)] : 0;
    done=1;
+
+   if ((VoxID & 8)!=0) EUVTR_on=1;
   }
  }
 
@@ -251,6 +254,8 @@ int EUVtransferGX(int *Lparms, double *Rparms, double *Parms,
 	          logTe_DEM_short, DEM_cor_short+k_first*NT_DEM, DEM_tr_short, flux);
  }
  else memset(flux, 0, sizeof(double)*Nchannels*fluxSize);
+
+ if (EUVTR_on) for (int l=0; l<Nchannels; l++) flux[D2(fluxSize, 2, l)]=1;
 
  free(Parms_short);
  free(DEM_cor_short);
