@@ -151,10 +151,13 @@ int InterpolateEBTEL(int NQ, int NL, int NT, double Q, double L, double *QgridL,
    double dQ2=(Qlog-QgridL[D2(NQ, Qind2, Lind+1)])/(QgridL[D2(NQ, Qind2+1, Lind+1)]-QgridL[D2(NQ, Qind2, Lind+1)]);
 
    for (int l=0; l<NT; l++)
+   {
     DEM[l]=DEM_run[D3(NT, NQ, l, Qind1, Lind)]*(1.0-dL)*(1.0-dQ1)+
            DEM_run[D3(NT, NQ, l, Qind1+1, Lind)]*(1.0-dL)*dQ1+
            DEM_run[D3(NT, NQ, l, Qind2, Lind+1)]*dL*(1.0-dQ2)+
            DEM_run[D3(NT, NQ, l, Qind2+1, Lind+1)]*dL*dQ2;
+	if (!finite(DEM[l])) DEM[l]=0;
+   }
   }
  }
 
