@@ -61,11 +61,9 @@ getparms.o: getparms.cpp
 $(BINDIR):
 	mkdir -p $@
 
-.PHONY: install clean EUVtransfer
+.PHONY: clean EUVtransfer
 
 EUVtransfer: $(ONAME)
-
-install: $(ONAME)
 
 clean:
 	rm -f *.o $(BINDIR)/EUVtransfer*.so
