@@ -1,7 +1,7 @@
 # -D LINUX in sources means "not Windows" (OpenMP vs MSVC PPL). It is set on
 # Darwin and Linux only; Windows builds use EUVtransfer.vcxproj, not this makefile.
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
+UNAME_S := $(shell uname -s 2>/dev/null)
+UNAME_M := $(shell uname -m 2>/dev/null)
 BINDIR = ../binaries
 
 CXX ?= g++
@@ -68,4 +68,4 @@ EUVtransfer: $(ONAME)
 install: $(ONAME)
 
 clean:
-	rm -f *.o $(ONAME)
+	rm -f *.o $(BINDIR)/EUVtransfer*.so
